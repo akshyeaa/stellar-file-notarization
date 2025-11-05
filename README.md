@@ -100,9 +100,31 @@ for testing or backend integration.
 
 ## Contract Details
 Contract ID: CDAKWQR3EVSQ2RUO7FLGH42TBSODUMDQCTU7XWS3DV3LULGTVAOCM43O
+1. Dashboard
+![alt text](image.png)
+
+2. Connecting wallet
 ![alt text](image-1.png)
+
+3. After choosing the File to be notarized
 ![alt text](image-2.png)
+
+4. Verify button before notarization
 ![alt text](image-3.png)
+
+5. Freighter Payment for Notarization
+![alt text](image-4.png)
+
+6. Notarization Certificate
+![alt text](image-5.png)
+
+7. Downloadable Certificate
+![alt text](image-6.png)
+
+8. After notarization
+![alt text](image-7.png)
+
+
 The Notarization smart contract is written in Rust using the Soroban SDK and deployed on the Stellar Testnet.
 It securely stores the SHA-256 hash of a file, along with the owner’s wallet address and a timestamp, ensuring that anyone can later verify the file’s authenticity and existence on-chain.
 
