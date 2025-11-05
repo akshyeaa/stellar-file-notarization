@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { connectFreighter, verifyFile, notarizeFile } from "../lib/stellar";
+import { connectFreighter, verifyFileWithDetails, notarizeFile } from "../lib/stellar";
+import Head from 'next/head';
+import CertificateGenerator from './components/CertificateGenerator';
 
 export default function Home() {
   const [wallet, setWallet] = useState("");
   const [hash, setHash] = useState("");
   const [status, setStatus] = useState("");
+  const [notarizationResult, setNotarizationResult] = useState(null);
+  const [showCertificate, setShowCertificate] = useState(false);
 
   // Connect wallet
   const connect = async () => {
@@ -30,7 +34,9 @@ export default function Home() {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
       setHash(hashHex);
-      setStatus("📁 File hash generated: " + hashHex);
+      setStatus("📁 File hash generated: " + hashHex.substring(0, 16) + "..." + hashHex.substring(hashHex.length - 16));
+      setNotarizationResult(null);
+      setShowCertificate(false);
     } catch (e) {
       setStatus("❌ Error generating file hash: " + e.message);
     }
@@ -45,9 +51,9 @@ export default function Home() {
       }
       
       setStatus("🔍 Verifying file on blockchain...");
-      const result = await verifyFile(hash);
-      if (result) {
-        setStatus("✅ Success! This file is already notarized on the blockchain.");
+      const result = await verifyFileWithDetails(hash);
+      if (result.notarized) {
+        setStatus(`✅ Success! This file is already notarized on the blockchain.\nOwner: ${result.owner}\nNotarized on: ${result.timestamp}`);
       } else {
         setStatus("❌ This file is not found in notarization records. You can notarize it now!");
       }
@@ -70,65 +76,127 @@ export default function Home() {
       }
       
       setStatus("📝 Notarizing file on blockchain...");
-      const tx = await notarizeFile(wallet, hash);
-      setStatus("✅ Success! File notarized on blockchain. TX Hash: " + tx);
-      console.log(`🔗 View transaction: https://stellar.expert/explorer/testnet/tx/${tx}`);
+      const result = await notarizeFile(wallet, hash);
+      
+      const notarizationData = {
+        hash: hash,
+        owner: wallet,
+        txHash: result.hash,
+        timestamp: result.timestamp
+      };
+      
+      setNotarizationResult(notarizationData);
+      setShowCertificate(true);
+      
+      setStatus(`✅ Success! File notarized on blockchain.\nTransaction Hash: ${result.hash}\nTimestamp: ${new Date(result.timestamp * 1000).toLocaleString()}`);
+      console.log(`🔗 View transaction: https://stellar.expert/explorer/testnet/tx/${result.hash}`);
     } catch (e) {
       setStatus("❌ Notarization failed: " + e.message);
     }
   };
 
+  const closeCertificate = () => {
+    setShowCertificate(false);
+  };
+
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen space-y-4 p-4">
-      <h1 className="text-3xl font-bold">File Notarization DApp</h1>
-      <p className="text-gray-400 text-center max-w-md">
-        Upload a file to generate its SHA-256 hash, then verify if it's already notarized or notarize it on the Stellar blockchain.
-      </p>
+    <div className="container mx-auto px-4 py-8">
+      <Head>
+        <title>File Notarization DApp</title>
+        <meta name="description" content="Notarize your files on the Stellar blockchain" />
+      </Head>
 
-      <button
-        onClick={connect}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-      >
-        {wallet ? "✅ Wallet Connected" : "🔌 Connect Freighter Wallet"}
-      </button>
+      <div className="max-w-2xl mx-auto bg-gray-800 rounded-xl shadow-md overflow-hidden">
+        <div className="p-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-6">Secure File Notarization</h2>
+            <p className="text-gray-300 mb-8">
+              Upload a file to generate its SHA-256 hash, then verify if it's already notarized or notarize it on the Stellar blockchain.
+            </p>
+          </div>
 
-      <div className="flex flex-col items-center space-y-2">
-        <label className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors">
-          📁 Choose File
-          <input
-            type="file"
-            onChange={handleFile}
-            className="hidden"
-          />
-        </label>
-        {hash && (
-          <p className="text-xs text-gray-400 mt-1">
-            File hash: {hash.substring(0, 16)}...{hash.substring(hash.length - 16)}
-          </p>
-        )}
-      </div>
+          <div className="space-y-6">
+            {/* Wallet Connection */}
+            <div className="text-center">
+              <button
+                onClick={connect}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300"
+              >
+                {wallet ? "✅ Wallet Connected" : "🔌 Connect Freighter Wallet"}
+              </button>
+              {wallet && (
+                <p className="mt-2 text-sm text-gray-400">Connected: {wallet.substring(0, 6)}...{wallet.substring(wallet.length - 4)}</p>
+              )}
+            </div>
 
-      {hash && (
-        <div className="flex space-x-4">
-          <button
-            onClick={verify}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            🔍 Verify
-          </button>
+            {/* File Upload */}
+            <div className="text-center">
+              <label className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg cursor-pointer transition-colors duration-300 block">
+                📁 Choose File
+                <input
+                  type="file"
+                  onChange={handleFile}
+                  className="hidden"
+                />
+              </label>
+              {hash && (
+                <p className="mt-2 text-sm text-gray-400">
+                  File hash: {hash.substring(0, 16)}...{hash.substring(hash.length - 16)}
+                </p>
+              )}
+            </div>
 
-          <button
-            onClick={notarize}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            📝 Notarize
-          </button>
+            {/* Action Buttons */}
+            {hash && (
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={verify}
+                  className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300"
+                >
+                  🔍 Verify
+                </button>
+
+                <button
+                  onClick={notarize}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300"
+                >
+                  📝 Notarize
+                </button>
+              </div>
+            )}
+
+            {/* Status Display */}
+            <div className="mt-6 p-4 bg-gray-700 rounded-lg">
+              <h3 className="font-bold mb-2">Status:</h3>
+              <p className="text-sm whitespace-pre-wrap">{status}</p>
+              
+              {notarizationResult && (
+                <div className="mt-4 p-3 bg-gray-600 rounded">
+                  <h4 className="font-bold mb-2">Notarization Details:</h4>
+                  <p className="text-sm">Transaction Hash: {notarizationResult.txHash}</p>
+                  <p className="text-sm">Timestamp: {new Date(notarizationResult.timestamp * 1000).toLocaleString()}</p>
+                  <a 
+                    href={`https://stellar.expert/explorer/testnet/tx/${notarizationResult.txHash}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline text-sm mt-2 inline-block"
+                  >
+                    View on Stellar Expert →
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-
-      <div className="mt-4 p-4 bg-gray-800 rounded-lg max-w-md">
-        <p className="text-sm text-gray-200 whitespace-pre-wrap">{status}</p>
       </div>
-    </main>
+
+      {/* Certificate Generator Modal */}
+      {showCertificate && notarizationResult && (
+        <CertificateGenerator 
+          notarizationData={notarizationResult}
+          onClose={closeCertificate}
+        />
+      )}
+    </div>
   );
 }

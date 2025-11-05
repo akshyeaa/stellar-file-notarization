@@ -11,7 +11,9 @@
   "dependencies": {
     "@stellar/freighter-api": "^5.0.0",
     "@stellar/stellar-sdk": "^14.3.0",
+    "jspdf": "^3.0.3",
     "next": "16.0.1",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

@@ -35,6 +35,38 @@ export async function connectFreighter() {
 }
 
 // -------------------------------
+// 🔍 VERIFY FILE WITH DETAILS
+// -------------------------------
+export async function verifyFileWithDetails(fileHashHex) {
+  try {
+    const hashBytes = Buffer.from(fileHashHex, "hex");
+    if (hashBytes.length !== 32) {
+      throw new Error("Invalid SHA-256 hash length (must be 32 bytes)");
+    }
+
+    // First, check if file exists using the existing verify function
+    const isNotarized = await verifyFile(fileHashHex);
+    
+    if (isNotarized) {
+      // File is notarized, but we can't get owner details without the updated contract
+      return {
+        notarized: true,
+        owner: "Unknown (requires updated contract)",
+        timestamp: "Unknown (requires updated contract)"
+      };
+    } else {
+      // File is not notarized
+      return {
+        notarized: false
+      };
+    }
+  } catch (err) {
+    console.error("🚨 Verify Error:", err);
+    return { notarized: false };
+  }
+}
+
+// -------------------------------
 // 🔍 VERIFY FILE
 // -------------------------------
 export async function verifyFile(fileHashHex) {
@@ -153,7 +185,10 @@ export async function notarizeFile(publicKey, fileHashHex) {
     }
 
     console.log(`✅ TX submitted successfully: ${sendResult.hash}`);
-    return sendResult.hash;
+    return {
+      hash: sendResult.hash,
+      timestamp: Math.floor(Date.now() / 1000)
+    };
   } catch (err) {
     console.error("🚨 Full Notarize Error Dump:", err);
     throw new Error("Error notarizing file: " + (err.message || "Unknown error occurred"));
